@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Productivity Widget</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        width: 300px;
+        background: #f9f9f9;
+        padding: 20px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      button {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+      }
+      #productivityChart {
+        width: 100%;
+        height: 150px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Productivity Widget</h2>
+      <input type="url" id="blockUrl" placeholder="Enter URL to block" />
+      <button onclick="addBlockedSite()">Add to block list</button>
+      <p>Set block time:</p>
+      <input type="time" id="startTime" value="09:00" />
+      <input type="time" id="endTime" value="17:00" />
+      <button onclick="setBlockTime()">Set Time</button>
+      <div>
+        <canvas id="productivityChart"></canvas>
+      </div>
+      <button onclick="setReminder()">Set Break Reminder</button>
+      <ul id="blockedSitesList"></ul>
+    </div>
+
+    <script>
+      let blockedSites = JSON.parse(localStorage.getItem('blockedSites')) || [];
+      let blockStartTime = localStorage.getItem('blockStartTime') || '09:00';
+      let blockEndTime = localStorage.getItem('blockEndTime') || '17:00';
+
+      document.getElementById('startTime').value = blockStartTime;
+      document.getElementById('endTime').value = blockEndTime;
+
+      function addBlockedSite() {
+        const url = document.getElementById('blockUrl').value;
+        if (url) {
+          blockedSites.push(url);
+          localStorage.setItem('blockedSites', JSON.stringify(blockedSites));
+          updateBlockedSitesList();
+          document.getElementById('blockUrl').value = '';
+        }
+      }
+
+      function setBlockTime() {
+        blockStartTime = document.getElementById('startTime').value;
+        blockEndTime = document.getElementById('endTime').value;
+        localStorage.setItem('blockStartTime', blockStartTime);
+        localStorage.setItem('blockEndTime', blockEndTime);
+      }
+
+      function updateBlockedSitesList() {
+        const listElement = document.getElementById('blockedSitesList');
+        listElement.innerHTML = '';
+        blockedSites.forEach((site) => {
+          const listItem = document.createElement('li');
+          listItem.textContent = site;
+          listElement.appendChild(listItem);
+        });
+      }
+
+      function checkIfBlocked() {
+        const now = new Date();
+        const currentTime = `${now.getHours()}:${now.getMinutes()}`;
+        if (currentTime >= blockStartTime && currentTime <= blockEndTime) {
+          if (
+            blockedSites.some((site) => window.location.href.includes(site))
+          ) {
+            alert('You are supposed to be productive now!');
+          }
+        }
+      }
+
+      function setReminder() {
+        // Basic reminder logic, could be expanded for more features
+        alert('Take a break now!');
+      }
+
+      function displayProductivityReport() {
+        // Placeholder for productivity chart logic
+        const ctx = document
+          .getElementById('productivityChart')
+          .getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Productive', 'Blocked'],
+            datasets: [
+              {
+                label: 'Time Spent',
+                data: [10, 5],
+                backgroundColor: ['green', 'red'],
+              },
+            ],
+          },
+        });
+      }
+
+      // Initial setup
+      updateBlockedSitesList();
+      setInterval(checkIfBlocked, 60000); // Check every minute
+      displayProductivityReport();
+    </script>
+  </body>
+</html>

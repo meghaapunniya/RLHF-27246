@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Productivity Widget</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <style>
+      body {
+        padding: 20px;
+      }
+      .chart-container {
+        width: 100%;
+        max-width: 600px;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <h1 class="title">Productivity Guardian</h1>
+
+      <!-- Website Blocker -->
+      <div class="block">
+        <input
+          id="siteInput"
+          class="input"
+          type="text"
+          placeholder="Enter site to block"
+        />
+        <button class="button is-primary" onclick="addSite()">Add Site</button>
+        <ul id="siteList"></ul>
+      </div>
+
+      <!-- Time Settings -->
+      <div class="field has-addons">
+        <p class="control">
+          <input id="startTime" class="input" type="time" />
+        </p>
+        <p class="control">
+          <input id="endTime" class="input" type="time" />
+        </p>
+        <p class="control">
+          <button class="button is-info" onclick="setBlockingTime()">
+            Set Blocking Time
+          </button>
+        </p>
+      </div>
+
+      <!-- Break Reminder -->
+      <div class="field">
+        <input
+          id="breakInterval"
+          class="input"
+          type="number"
+          placeholder="Break interval in minutes"
+        />
+        <button class="button is-link" onclick="setBreakReminder()">
+          Set Break
+        </button>
+      </div>
+
+      <!-- Productivity Chart -->
+      <div class="chart-container">
+        <canvas id="productivityChart"></canvas>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      let blockedSites = JSON.parse(localStorage.getItem('blockedSites')) || [];
+      let blockingTime = JSON.parse(localStorage.getItem('blockingTime')) || {
+        start: null,
+        end: null,
+      };
+      let breakInterval = localStorage.getItem('breakInterval') || 0;
+
+      function addSite() {
+        const site = document.getElementById('siteInput').value;
+        if (site) {
+          blockedSites.push(site);
+          localStorage.setItem('blockedSites', JSON.stringify(blockedSites));
+          updateSiteList();
+        }
+      }
+
+      function updateSiteList() {
+        const list = document.getElementById('siteList');
+        list.innerHTML = blockedSites
+          .map(
+            (site) =>
+              `<li>${site} <button class="delete" onclick="removeSite('${site}')"></button></li>`
+          )
+          .join('');
+      }
+
+      function removeSite(site) {
+        blockedSites = blockedSites.filter((s) => s !== site);
+        localStorage.setItem('blockedSites', JSON.stringify(blockedSites));
+        updateSiteList();
+      }
+
+      function setBlockingTime() {
+        blockingTime.start = document.getElementById('startTime').value;
+        blockingTime.end = document.getElementById('endTime').value;
+        localStorage.setItem('blockingTime', JSON.stringify(blockingTime));
+      }
+
+      function setBreakReminder() {
+        breakInterval = document.getElementById('breakInterval').value;
+        localStorage.setItem('breakInterval', breakInterval);
+        // Here you would start a timer for break reminders
+      }
+
+      function updateProductivityChart() {
+        // This function should gather data and update the chart
+        // For demonstration, we'll use static data
+        const ctx = document
+          .getElementById('productivityChart')
+          .getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Productive', 'Distractions'],
+            datasets: [
+              {
+                label: 'Time Spent',
+                data: [70, 30], // Example data
+                backgroundColor: [
+                  'rgba(75, 192, 192, 0.2)',
+                  'rgba(255, 99, 132, 0.2)',
+                ],
+                borderColor: ['rgba(75, 192, 192, 1)', 'rgba(255, 99, 132, 1)'],
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: { scales: { y: { beginAtZero: true } } },
+        });
+      }
+
+      // Initial setup
+      updateSiteList();
+      updateProductivityChart();
+      // Here you would implement actual blocking logic based on time and break reminders
+    </script>
+  </body>
+</html>

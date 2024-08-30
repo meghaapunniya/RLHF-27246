@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Productivity Widget</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 800px;
+        margin: 50px auto;
+        background: #fff;
+        padding: 20px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+      }
+      h1 {
+        text-align: center;
+        color: #333;
+      }
+      .section {
+        margin-bottom: 20px;
+      }
+      .section-title {
+        font-size: 1.2em;
+        margin-bottom: 10px;
+        color: #555;
+      }
+      .block-list,
+      .schedule,
+      .productivity-reports,
+      .break-reminders {
+        border: 1px solid #ddd;
+        padding: 15px;
+        border-radius: 8px;
+        background: #fafafa;
+      }
+      input[type='text'],
+      input[type='time'],
+      input[type='date'] {
+        padding: 8px;
+        width: calc(100% - 20px);
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 1em;
+      }
+      button {
+        padding: 10px 20px;
+        border: none;
+        background-color: #5cb85c;
+        color: white;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+      }
+      button:hover {
+        background-color: #4cae4c;
+      }
+      #chart {
+        margin-top: 20px;
+      }
+      .remove-icon {
+        cursor: pointer;
+        color: #d9534f;
+        font-size: 1.2em;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Productivity Widget</h1>
+
+      <div class="section block-list">
+        <div class="section-title">Block List</div>
+        <input
+          type="text"
+          id="websiteInput"
+          placeholder="Enter website URL to block"
+        />
+        <button id="addWebsiteBtn">Add Website</button>
+        <ul id="blockedWebsites">
+          <!-- Blocked websites will be listed here -->
+        </ul>
+      </div>
+
+      <div class="section schedule">
+        <div class="section-title">Schedule Blocking</div>
+        <input type="time" id="startTime" placeholder="Start Time" />
+        <input type="time" id="endTime" placeholder="End Time" />
+        <button id="setScheduleBtn">Set Schedule</button>
+      </div>
+
+      <div class="section productivity-reports">
+        <div class="section-title">Productivity Reports</div>
+        <canvas id="chart"></canvas>
+      </div>
+
+      <div class="section break-reminders">
+        <div class="section-title">Break Reminders</div>
+        <input
+          type="number"
+          id="breakInterval"
+          placeholder="Break Interval (in minutes)"
+          min="1"
+          step="1"
+        />
+        <button id="setBreakBtn">Set Break Reminder</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const websiteInput = document.getElementById('websiteInput');
+        const addWebsiteBtn = document.getElementById('addWebsiteBtn');
+        const blockedWebsites = document.getElementById('blockedWebsites');
+        const startTimeInput = document.getElementById('startTime');
+        const endTimeInput = document.getElementById('endTime');
+        const setScheduleBtn = document.getElementById('setScheduleBtn');
+        const breakIntervalInput = document.getElementById('breakInterval');
+        const setBreakBtn = document.getElementById('setBreakBtn');
+        let productivityData = JSON.parse(
+          localStorage.getItem('productivityData')
+        ) || { productive: 0, distracted: 0 };
+        let lastStartTime = null;
+
+        let blockedList = JSON.parse(localStorage.getItem('blockedList')) || [];
+        let blockSchedule =
+          JSON.parse(localStorage.getItem('blockSchedule')) || {};
+        let breakInterval = localStorage.getItem('breakInterval') || null;
+        let breakReminderTimeout;
+        let breakReminderInterval;
+
+        function renderBlockedList() {
+          blockedWebsites.innerHTML = '';
+          blockedList.forEach(function (website) {
+            const listItem = document.createElement('li');
+            listItem.textContent = website;
+            const removeIcon = document.createElement('i');
+            removeIcon.className = 'fas fa-trash-alt remove-icon';
+            removeIcon.addEventListener('click', function () {
+              removeWebsite(website);
+            });
+            listItem.appendChild(removeIcon);
+            blockedWebsites.appendChild(listItem);
+          });
+        }
+
+        function removeWebsite(website) {
+          blockedList = blockedList.filter((item) => item !== website);
+          localStorage.setItem('blockedList', JSON.stringify(blockedList));
+          renderBlockedList();
+        }
+
+        addWebsiteBtn.addEventListener('click', function () {
+          const website = websiteInput.value.trim();
+          if (website) {
+            const listItem = document.createElement('li');
+            listItem.textContent = website;
+            blockedWebsites.appendChild(listItem);
+            blockedList.push(website);
+            localStorage.setItem('blockedList', JSON.stringify(blockedList));
+            renderBlockedList();
+
+            websiteInput.value = '';
+          }
+        });
+
+        renderBlockedList();
+
+        setScheduleBtn.addEventListener('click', function () {
+          const startTime = startTimeInput.value;
+          const endTime = endTimeInput.value;
+
+          if (startTime && endTime) {
+            blockSchedule = { startTime, endTime };
+            localStorage.setItem(
+              'blockSchedule',
+              JSON.stringify(blockSchedule)
+            );
+            alert('Blocking schedule set!');
+          } else {
+            alert('Please set both start and end times.');
+          }
+        });
+
+        setBreakBtn.addEventListener('click', function () {
+          const breakIntervalMinutes = breakIntervalInput.value.trim();
+          if (breakIntervalMinutes && !isNaN(breakIntervalMinutes)) {
+            breakInterval = parseInt(breakIntervalMinutes) * 60000; // Convert minutes to milliseconds
+            localStorage.setItem('breakInterval', breakInterval);
+            alert('Break reminder set!');
+
+            // Clear existing intervals and timeouts
+            clearInterval(breakReminderInterval);
+            clearTimeout(breakReminderTimeout);
+
+            // Start new break reminders
+            startBreakReminders();
+          } else {
+            alert('Please enter a valid break interval.');
+          }
+        });
+
+        function checkBlockSchedule() {
+          const currentTime = new Date();
+          const currentHours = currentTime.getHours();
+          const currentMinutes = currentTime.getMinutes();
+
+          if (blockSchedule.startTime && blockSchedule.endTime) {
+            const [startHours, startMinutes] = blockSchedule.startTime
+              .split(':')
+              .map(Number);
+            const [endHours, endMinutes] = blockSchedule.endTime
+              .split(':')
+              .map(Number);
+
+            const isWithinSchedule =
+              (currentHours > startHours ||
+                (currentHours === startHours &&
+                  currentMinutes >= startMinutes)) &&
+              (currentHours < endHours ||
+                (currentHours === endHours && currentMinutes <= endMinutes));
+
+            if (isWithinSchedule) {
+              blockWebsites();
+            } else {
+              unblockWebsites();
+            }
+          }
+        }
+
+        // Function to check and block websites
+        function blockWebsites() {
+          const blockedList =
+            JSON.parse(localStorage.getItem('blockedList')) || [];
+          const currentUrl = window.location.href;
+
+          blockedList.forEach(function (blockedSite) {
+            // Check if the current URL includes any blocked site
+            if (currentUrl.includes(blockedSite)) {
+              // Redirect to the Blocked page
+              window.location.href = 'blocked.html';
+            }
+          });
+          // Update tracking data
+          if (lastStartTime) {
+            const now = new Date();
+            const timeSpent = (now - lastStartTime) / 1000 / 60; // Time in minutes
+            productivityData.productive += timeSpent;
+            localStorage.setItem(
+              'productivityData',
+              JSON.stringify(productivityData)
+            );
+            lastStartTime = null;
+          }
+        }
+
+        // Monitor changes to the URL before navigation
+        window.addEventListener('beforeunload', function (event) {
+          blockWebsites();
+        });
+
+        // Monitor changes to the hash part of the URL (for single-page apps, etc.)
+        window.addEventListener('hashchange', function () {
+          blockWebsites();
+        });
+
+        // Monitor the URL on page load and continuously at regular intervals
+        window.addEventListener('load', function () {
+          blockWebsites();
+          setInterval(blockWebsites, 1000); // Check every second
+        });
+
+        // Initial check on DOM load
+        document.addEventListener('DOMContentLoaded', function () {
+          blockWebsites();
+        });
+
+        function unblockWebsites() {
+          console.log('Websites are unblocked!');
+          if (!lastStartTime) {
+            lastStartTime = new Date();
+          }
+        }
+
+        function startBreakReminders() {
+          if (breakInterval) {
+            clearTimeout(breakReminderTimeout);
+            breakReminderTimeout = setTimeout(function () {
+              alert('Time for a break!');
+              breakReminderInterval = setInterval(function () {
+                alert('Time for a break!');
+              }, breakInterval);
+            }, breakInterval);
+          }
+        }
+
+        setInterval(checkBlockSchedule, 60000);
+        setInterval(blockWebsites, 1000);
+
+        const ctx = document.getElementById('chart').getContext('2d');
+        const chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: ['Productive Time', 'Distracted Time'],
+            datasets: [
+              {
+                label: 'Time Spent (minutes)',
+                data: [
+                  productivityData.productive,
+                  productivityData.distracted,
+                ],
+                backgroundColor: ['#5cb85c', '#d9534f'],
+              },
+            ],
+          },
+        });
+
+        // Update chart with new data
+        function updateChart() {
+          chart.data.datasets[0].data = [
+            productivityData.productive,
+            productivityData.distracted,
+          ];
+          chart.update();
+        }
+
+        // Call updateChart every second
+        setInterval(updateChart, 1000);
+      });
+    </script>
+  </body>
+</html>
